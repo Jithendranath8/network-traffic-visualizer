@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Network Traffic Analyzer Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header>
+    <h1>Network Traffic Analyzer</h1>
+    <div id="status">Connecting...</div>
+  </header>
+
+  <main class="grid">
+    <section class="card">
+      <h2>Traffic by Protocol</h2>
+      <canvas id="protocolChart"></canvas>
+    </section>
+
+    <section class="card">
+      <h2>Bandwidth Over Time (bytes/sec)</h2>
+      <canvas id="bandwidthChart"></canvas>
+    </section>
+
+    <section class="card">
+      <h2>Top Talkers</h2>
+      <table id="talkersTable">
+        <thead>
+          <tr>
+            <th>IP</th>
+            <th>Bytes</th>
+            <th>Packets</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="card card-full">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <div>
+          <h2 style="margin: 0; display: inline-block;">Packet Capture</h2>
+          <span id="packetCount" style="margin-left: 12px; color: var(--muted); font-size: 12px; font-weight: normal;">(0 packets)</span>
+          <span id="captureStatus" style="margin-left: 12px; padding: 2px 8px; border-radius: 4px; font-size: 11px; background: #374151; color: #9ca3af;">Status: Checking...</span>
+        </div>
+        <button id="refreshPackets" style="padding: 6px 12px; background: var(--accent); border: none; border-radius: 6px; color: white; cursor: pointer;">Refresh</button>
+      </div>
+      <div id="captureHelp" style="margin-bottom: 12px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-left: 3px solid var(--accent); border-radius: 4px; font-size: 12px; color: var(--muted); display: none;">
+        <strong style="color: var(--accent);">💡 How Packet Capture Works:</strong><br>
+        • Capture is <strong>automatic</strong> - packets are captured in the background as soon as the server runs<br>
+        • <strong>Generate network traffic</strong> to see packets: browse websites, ping servers, use apps, etc.<br>
+        • Make sure you're using the correct network interface (check server logs)<br>
+        • On Linux/macOS, you may need to run with <code>sudo</code> for packet capture permissions
+      </div>
+      <div style="overflow-x: auto; max-height: 400px;">
+        <table id="packetsTable" style="width: 100%; font-size: 13px;">
+          <thead>
+            <tr>
+              <th>No.</th>
+              <th>Time</th>
+              <th>Source</th>
+              <th>Destination</th>
+              <th>Protocol</th>
+              <th>Length</th>
+              <th>Info</th>
+            </tr>
+          </thead>
+          <tbody id="packetsTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <!-- Packet Detail Modal -->
+  <div id="packetModal" class="modal" style="display: none;">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>Packet Details</h2>
+        <span class="close">&times;</span>
+      </div>
+      <div class="modal-body" id="packetDetailContent"></div>
+    </div>
+  </div>
+
+  <footer>
+    <span>Backend: <code>ws://localhost:8000/ws</code></span>
+  </footer>
+
+  <script src="/static/script.js"></script>
+</body>
+</html>
