@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  network-analyzer:
+    build: .
+    container_name: network-analyzer
+    network_mode: host  # Required for packet capture on host network
+    cap_add:
+      - NET_RAW      # Required for raw socket access
+      - NET_ADMIN    # Required for network admin operations
+    environment:
+      - NET_IFACE=eth0  # Change to your network interface (eth0, en0, etc.)
+    restart: unless-stopped
+    # Note: When using network_mode: host, ports mapping is not needed
+    # The service will use the host's network directly
+    
