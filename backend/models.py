@@ -48,3 +48,53 @@ class PacketDetail(BaseModel):
 class PacketList(BaseModel):
     packets: List[PacketDetail]
     total: int
+
+
+class FlowDetail(BaseModel):
+    src_ip: str
+    dst_ip: str
+    src_port: int
+    dst_port: int
+    protocol: str
+    first_seen: float
+    last_seen: float
+    duration: float
+    total_bytes: int
+    packet_count: int
+    bytes_per_sec: float
+    tcp_flags: List[str] = []
+
+
+class FlowList(BaseModel):
+    flows: List[FlowDetail]
+    total: int
+
+
+class SecurityAlert(BaseModel):
+    timestamp: float
+    alert_type: str
+    severity: str
+    source_ip: str
+    description: str
+    evidence: Dict
+    acknowledged: bool = False
+
+
+class AlertList(BaseModel):
+    alerts: List[SecurityAlert]
+    total: int
+
+
+class GeoIPInfo(BaseModel):
+    ip: str
+    country: Optional[str] = None
+    city: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+
+
+class TopTalkerGeo(BaseModel):
+    ip: str
+    bytes: int
+    packets: int
+    geo: Optional[GeoIPInfo] = None
