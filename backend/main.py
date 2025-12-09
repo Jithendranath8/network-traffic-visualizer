@@ -259,9 +259,16 @@ async def get_flows(
     
     # Apply filters
     if protocol:
-        flows = [f for f in flows if f.protocol.upper() == protocol.upper()]
+        # Normalize protocol match (case-insensitive)
+        proto = protocol.strip().upper()
+        flows = [f for f in flows if f.protocol.upper() == proto]
     if src_ip:
-        flows = [f for f in flows if f.src_ip == src_ip or f.dst_ip == src_ip]
+        # Allow partial match against either endpoint to make UI filtering forgiving
+        ip_filter = src_ip.strip()
+        flows = [
+            f for f in flows
+            if ip_filter in f.src_ip or ip_filter in f.dst_ip
+        ]
     if start_time:
         flows = [f for f in flows if f.last_seen >= start_time]
     if end_time:

@@ -326,7 +326,7 @@
       try {
         const data = JSON.parse(evt.data);
         if (currentView === 'sessions') {
-          displayFlows(data.flows || []);
+          displayFlows(filterFlows(data.flows || []));
         }
         if (currentView === 'graph') {
           updateNetworkGraph(data.flows || []);
@@ -413,11 +413,23 @@
       }
       const data = await res.json();
       console.log('Loaded flows:', data.flows?.length || 0);
-      displayFlows(data.flows || []);
+      displayFlows(filterFlows(data.flows || []));
     } catch (e) {
       console.error('Failed to load sessions', e);
       alert('Failed to load sessions: ' + e.message);
     }
+  }
+
+  // Apply current UI filters to a flows list
+  function filterFlows(flows) {
+    const ipFilter = (document.getElementById('sessionFilterIP')?.value || '').trim();
+    const protocolFilter = (document.getElementById('sessionFilterProtocol')?.value || '').trim().toUpperCase();
+    
+    return flows.filter(f => {
+      const protoOk = !protocolFilter || (f.protocol || '').toUpperCase() === protocolFilter;
+      const ipOk = !ipFilter || (f.src_ip || '').includes(ipFilter) || (f.dst_ip || '').includes(ipFilter);
+      return protoOk && ipOk;
+    });
   }
 
   function displayFlows(flows) {
