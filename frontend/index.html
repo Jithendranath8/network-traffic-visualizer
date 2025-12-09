@@ -3,74 +3,155 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Network Traffic Analyzer Dashboard</title>
-  <link rel="stylesheet" href="/static/style.css" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <title>Network Traffic Analyzer & Security Monitoring Dashboard</title>
+  <link rel="stylesheet" href="/static/style.css?v=2.2" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
   <header>
-    <h1>Network Traffic Analyzer</h1>
+    <h1>Network Traffic Analyzer & Security Monitoring</h1>
+    <nav id="mainNav">
+      <button class="nav-btn active" data-view="dashboard">Dashboard</button>
+      <button class="nav-btn" data-view="sessions">Session Explorer</button>
+      <button class="nav-btn" data-view="alerts">Alert Center</button>
+      <button class="nav-btn" data-view="geo">Geo IP Map</button>
+      <button class="nav-btn" data-view="graph">Network Graph</button>
+      <button class="nav-btn" data-view="timeline">Timeline Replay</button>
+    </nav>
     <div id="status">Connecting...</div>
   </header>
 
-  <main class="grid">
-    <section class="card">
-      <h2>Traffic by Protocol</h2>
-      <canvas id="protocolChart"></canvas>
-    </section>
+  <main>
+    <!-- Dashboard View -->
+    <div id="dashboardView" class="view active">
+      <div class="grid">
+        <section class="card">
+          <h2>Live Metrics</h2>
+          <div class="metrics-grid">
+            <div class="metric">
+              <div class="metric-label">Packets/sec</div>
+              <div class="metric-value" id="packetsPerSec">0</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Bandwidth</div>
+              <div class="metric-value" id="bandwidth">0 B/s</div>
+            </div>
+            <div class="metric">
+              <div class="metric-label">Active Sessions</div>
+              <div class="metric-value" id="activeSessions">0</div>
+            </div>
+          </div>
+        </section>
 
-    <section class="card">
-      <h2>Bandwidth Over Time (bytes/sec)</h2>
-      <canvas id="bandwidthChart"></canvas>
-    </section>
+        <section class="card">
+          <h2>Traffic by Protocol</h2>
+          <canvas id="protocolChart"></canvas>
+        </section>
 
-    <section class="card">
-      <h2>Top Talkers</h2>
-      <table id="talkersTable">
-        <thead>
-          <tr>
-            <th>IP</th>
-            <th>Bytes</th>
-            <th>Packets</th>
-          </tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
+        <section class="card">
+          <h2>Bandwidth Over Time</h2>
+          <canvas id="bandwidthChart"></canvas>
+        </section>
 
-    <section class="card card-full">
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-        <div>
-          <h2 style="margin: 0; display: inline-block;">Packet Capture</h2>
-          <span id="packetCount" style="margin-left: 12px; color: var(--muted); font-size: 12px; font-weight: normal;">(0 packets)</span>
-          <span id="captureStatus" style="margin-left: 12px; padding: 2px 8px; border-radius: 4px; font-size: 11px; background: #374151; color: #9ca3af;">Status: Checking...</span>
+        <section class="card">
+          <h2>Top IP Talkers</h2>
+          <table id="talkersTable">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>IP</th>
+                <th>Bytes</th>
+                <th>Packets</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </section>
+      </div>
+    </div>
+
+    <!-- Session Explorer View -->
+    <div id="sessionsView" class="view">
+      <div class="card card-full">
+        <h2>Network Sessions</h2>
+        <div class="filters">
+          <input type="text" id="sessionFilterIP" placeholder="Filter by IP..." />
+          <select id="sessionFilterProtocol">
+            <option value="">All Protocols</option>
+            <option value="TCP">TCP</option>
+            <option value="UDP">UDP</option>
+            <option value="ICMP">ICMP</option>
+          </select>
+          <button id="refreshSessions">Refresh</button>
         </div>
-        <button id="refreshPackets" style="padding: 6px 12px; background: var(--accent); border: none; border-radius: 6px; color: white; cursor: pointer;">Refresh</button>
+        <div style="overflow-x: auto;">
+          <table id="sessionsTable">
+            <thead>
+              <tr>
+                <th>.</th>
+                <th>Source → Destination</th>
+                <th>Ports</th>
+                <th>Protocol</th>
+                <th>Bytes</th>
+                <th>Packets</th>
+                <th>Duration</th>
+                <th>Flags</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
       </div>
-      <div id="captureHelp" style="margin-bottom: 12px; padding: 12px; background: rgba(59, 130, 246, 0.1); border-left: 3px solid var(--accent); border-radius: 4px; font-size: 12px; color: var(--muted); display: none;">
-        <strong style="color: var(--accent);">💡 How Packet Capture Works:</strong><br>
-        • Capture is <strong>automatic</strong> - packets are captured in the background as soon as the server runs<br>
-        • <strong>Generate network traffic</strong> to see packets: browse websites, ping servers, use apps, etc.<br>
-        • Make sure you're using the correct network interface (check server logs)<br>
-        • On Linux/macOS, you may need to run with <code>sudo</code> for packet capture permissions
+    </div>
+
+    <!-- Alert Center View -->
+    <div id="alertsView" class="view">
+      <div class="card card-full">
+        <h2>Security Alerts</h2>
+        <div class="filters">
+          <label>
+            <input type="checkbox" id="alertsUnacknowledgedOnly" /> Unacknowledged only
+          </label>
+          <button id="refreshAlerts">Refresh</button>
+        </div>
+        <div id="alertsTimeline"></div>
       </div>
-      <div style="overflow-x: auto; max-height: 400px;">
-        <table id="packetsTable" style="width: 100%; font-size: 13px;">
-          <thead>
-            <tr>
-              <th>No.</th>
-              <th>Time</th>
-              <th>Source</th>
-              <th>Destination</th>
-              <th>Protocol</th>
-              <th>Length</th>
-              <th>Info</th>
-            </tr>
-          </thead>
-          <tbody id="packetsTableBody"></tbody>
-        </table>
+    </div>
+
+    <!-- Geo IP Map View -->
+    <div id="geoView" class="view">
+      <div class="card card-full">
+        <h2>Geographic Traffic Distribution</h2>
+        <div id="geoMap" style="height: 600px;"></div>
       </div>
-    </section>
+    </div>
+
+    <!-- Network Graph View -->
+    <div id="graphView" class="view">
+      <div class="card card-full">
+        <h2>Network Topology Graph</h2>
+        <div id="networkGraph" style="height: 600px;"></div>
+      </div>
+    </div>
+
+    <!-- Timeline Replay View -->
+    <div id="timelineView" class="view">
+      <div class="card card-full">
+        <h2>PCAP Playback & Timeline</h2>
+        <div class="pcap-controls">
+          <input type="file" id="pcapFileInput" accept=".pcap,.pcapng" />
+          <input type="number" id="pcapSpeed" value="1.0" min="0.1" max="10" step="0.1" />
+          <label>Speed: <span id="pcapSpeedLabel">1.0x</span></label>
+          <button id="uploadPcap">Upload & Play</button>
+          <button id="stopPcap">Stop</button>
+        </div>
+        <div id="timelineChart" style="height: 400px;"></div>
+      </div>
+    </div>
   </main>
 
   <!-- Packet Detail Modal -->
@@ -86,6 +167,7 @@
 
   <footer>
     <span>Backend: <code>ws://localhost:8000/ws</code></span>
+    <span id="connectionStatus"></span>
   </footer>
 
   <script src="/static/script.js"></script>
