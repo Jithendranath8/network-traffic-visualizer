@@ -13,6 +13,8 @@
   let protocolChart = null;
   let bandwidthChart = null;
   let geoMap = null;
+  let geoLayer = null;
+  let geoInterval = null;
   let networkGraph = null;
   let currentView = 'dashboard';
   
@@ -871,35 +873,52 @@
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '©️ OpenStreetMap contributors'
     }).addTo(geoMap);
-    
+    geoLayer = L.layerGroup().addTo(geoMap);
+
     loadGeoData();
+    // Refresh so markers appear even if the map was opened before any traffic,
+    // and stay current as the top talkers change.
+    if (!geoInterval) geoInterval = setInterval(loadGeoData, 15000);
   }
 
   async function loadGeoData() {
     try {
       const res = await fetch('/top-talkers?limit=50&with_geo=true');
       const talkers = await res.json();
-      
-      if (!geoMap) return;
-      
+
+      if (!geoMap || !geoLayer) return;
+
+      // Clear previous markers before re-plotting to avoid duplicates on refresh.
+      geoLayer.clearLayers();
+      let plotted = 0;
+
       talkers.forEach(talker => {
         if (talker.geo && talker.geo.latitude && talker.geo.longitude) {
           const marker = L.circleMarker([talker.geo.latitude, talker.geo.longitude], {
-            radius: Math.min(20, Math.max(5, talker.bytes / 1000000)),
+            radius: Math.min(20, Math.max(6, Math.log10(Math.max(talker.bytes, 1)) * 3)),
             fillColor: '#3b82f6',
             color: '#fff',
             weight: 2,
             opacity: 1,
             fillOpacity: 0.6
-          }).addTo(geoMap);
-          
+          });
+
           marker.bindPopup(`
             <strong>${talker.ip}</strong><br>
-            ${talker.geo.country || 'Unknown'}<br>
+            ${[talker.geo.city, talker.geo.country].filter(Boolean).join(', ') || 'Unknown'}<br>
             ${formatBytes(talker.bytes)} / ${talker.packets} packets
           `);
+          geoLayer.addLayer(marker);
+          plotted++;
         }
       });
+
+      const statusEl = document.getElementById('geoStatus');
+      if (statusEl) {
+        statusEl.textContent = plotted
+          ? `${plotted} located host${plotted === 1 ? '' : 's'}`
+          : 'No geolocatable hosts yet — waiting for public traffic…';
+      }
     } catch (e) {
       console.error('Failed to load geo data', e);
     }
