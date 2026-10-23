@@ -23,4 +23,4 @@ EXPOSE 8000
 
 # Run with root privileges for packet capture (note: Docker containers run as root by default)
 # For production, consider using capabilities: --cap-add=NET_RAW --cap-add=NET_ADMIN
-CMD ["python", "main.py", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "python main.py --host 0.0.0.0 --port ${PORT:-8000}"]
