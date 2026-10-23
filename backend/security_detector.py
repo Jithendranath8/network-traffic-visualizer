@@ -91,11 +91,21 @@ class SecurityDetector:
         self.database = database  # Database for auto-persistence
         
     def _clean_old_entries(self, tracker: Dict[str, deque], window: int):
-        """Remove entries older than window from tracker"""
+        """Remove entries older than window from tracker.
+
+        Entries may be bare timestamps (float) or (timestamp, value) tuples
+        (e.g. the port-scan tracker stores (ts, port)), so read the timestamp
+        from the right position instead of subtracting a tuple from a float.
+        """
         now = time.time()
         for ip, entries in tracker.items():
-            while entries and now - entries[0] > window:
-                entries.popleft()
+            while entries:
+                head = entries[0]
+                ts = head[0] if isinstance(head, (tuple, list)) else head
+                if now - ts > window:
+                    entries.popleft()
+                else:
+                    break
     
     def _save_alert(self, alert: SecurityAlert):
         """Helper to save alert to database if available"""

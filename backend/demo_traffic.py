@@ -146,8 +146,9 @@ class DemoTrafficGenerator:
                 time.sleep(0.01)
             logger.info("Demo: injected port-scan burst from %s", attacker)
         else:
-            # SYN flood: many half-open connections to one port.
-            for _ in range(60):
+            # SYN flood: many half-open connections to one port (detector
+            # threshold is 100 SYNs within its window, so send comfortably more).
+            for _ in range(130):
                 if self._stop.is_set():
                     return
                 self._emit(attacker, target, "TCP", 60,
