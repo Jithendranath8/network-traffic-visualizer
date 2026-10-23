@@ -34,12 +34,14 @@ from backend.security_detector import SecurityDetector
 from backend.database import Database
 from backend.pcap_replay import PCAPReplay
 from backend.geoip import GeoIPLookup
+from backend.demo_traffic import DemoTrafficGenerator
 
 
 # Global state
 aggregator: Optional[MetricsAggregator] = None
 sniffer: Optional[PacketSniffer] = None
 pcap_replay: Optional[PCAPReplay] = None
+demo_traffic: Optional[DemoTrafficGenerator] = None
 flow_tracker: Optional[FlowTracker] = None
 security_detector: Optional[SecurityDetector] = None
 database: Optional[Database] = None
@@ -142,7 +144,7 @@ def flow_expiration_task() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Application lifespan manager"""
-    global aggregator, sniffer, flow_tracker, security_detector, database, geoip
+    global aggregator, sniffer, flow_tracker, security_detector, database, geoip, demo_traffic
     
     # Startup
     import logging
@@ -169,7 +171,16 @@ async def lifespan(app: FastAPI):
         sniffer.start()
     else:
         logger.warning("No NET_IFACE set - packet capture disabled. Use --iface or export NET_IFACE")
-    
+
+    # Start the demo traffic generator unless explicitly disabled (DEMO_MODE=0).
+    # On managed hosts (Render, etc.) live capture can't work, so this keeps the
+    # dashboard populated; it self-disables the moment real packets arrive.
+    if os.environ.get("DEMO_MODE", "1").strip().lower() not in ("0", "false", "no", "off"):
+        demo_traffic = DemoTrafficGenerator(aggregator)
+        demo_traffic.start()
+    else:
+        logger.info("DEMO_MODE disabled - demo traffic generator not started")
+
     # Start background tasks
     metrics_task = asyncio.create_task(metrics_broadcaster_task())
     alerts_task = asyncio.create_task(alerts_broadcaster_task())
@@ -186,6 +197,8 @@ async def lifespan(app: FastAPI):
         sniffer.stop()
     if pcap_replay:
         pcap_replay.stop()
+    if demo_traffic:
+        demo_traffic.stop()
     
     metrics_task.cancel()
     alerts_task.cancel()

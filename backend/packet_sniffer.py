@@ -35,12 +35,21 @@ class MetricsAggregator:
         self.max_packets = max_packets
         self.packet_store: Deque[Dict] = deque(maxlen=max_packets)
         self._packet_id_counter = 0
+        # Timestamp (ms) of the last *real* packet (live capture or PCAP replay),
+        # used so the demo traffic generator can stand down when real data flows.
+        self._last_real_packet_ms: int = 0
         
         # Integration with flow tracker and security detector
         self.flow_tracker = flow_tracker
         self.security_detector = security_detector
         
         logger.info(f"MetricsAggregator initialized with max_packets={max_packets}")
+
+    def real_traffic_recent(self, window_ms: int = 15000) -> bool:
+        """True if a real (non-demo) packet was observed within window_ms."""
+        if self._last_real_packet_ms == 0:
+            return False
+        return (int(time.time() * 1000) - self._last_real_packet_ms) < window_ms
 
     def _rollover_if_needed(self, now_ms: int) -> None:
         now_sec = now_ms // 1000
@@ -60,7 +69,7 @@ class MetricsAggregator:
             while self.bandwidth_series and self.bandwidth_series[0][0] < cutoff:
                 self.bandwidth_series.popleft()
 
-    def observe_packet(self, src_ip: str, dst_ip: str, proto: str, size_bytes: int, now_ms: Optional[int] = None, packet_detail: Optional[Dict] = None) -> None:
+    def observe_packet(self, src_ip: str, dst_ip: str, proto: str, size_bytes: int, now_ms: Optional[int] = None, packet_detail: Optional[Dict] = None, is_demo: bool = False) -> None:
         # Ensure size_bytes is always an integer (defensive check)
         if isinstance(size_bytes, (tuple, list)):
             size_bytes = int(size_bytes[0]) if size_bytes else 0
@@ -72,6 +81,8 @@ class MetricsAggregator:
         if now_ms is None:
             now_ms = int(time.time() * 1000)
         now_sec = now_ms // 1000
+        if not is_demo:
+            self._last_real_packet_ms = now_ms
         with self.lock:
             self._rollover_if_needed(now_ms)
             self._current_second_bytes += size_bytes
